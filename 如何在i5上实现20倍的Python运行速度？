@@ -1,0 +1,144 @@
+如何在i5上实现20倍的Python运行速度？
+投递人 itwriter 发布于 2017-04-05 14:22 
+
+　　Intel Distribution for Python 在今年二月进行了更新——英特尔发布了 Update 2 版本。以“加速”为核心的它，相比原生 Python 环境有多大提升呢？
+
+　　雷锋网获知，并行计算专家、前英特尔高级工程师 James Reinders 对老东家的产品进行了测试。他对外宣布：在配备四核 i5 的 iMAC 上实现了 20 倍的性能加速！
+
+　　至于他是怎么做到的，请继续往下看（含代码）。
+
+如何在 i5 上实现 20 倍的 Python 运行速度？
+
+James Reinders
+
+　　James Reinders：利用 Intel Distribution for Python，我实现了 Python 的 20 倍加速，并且可用单个命令关闭/启用。这还不是在最优情况下，而在虚拟环境——在 VirtualBox（下文简称 VBox） 上运行的 openSUSE Linux Tumbleweed（即“滚动版本”，请参考 openSUSE 官网)，使用的机器是四核 iMac。
+
+　　这在 Windows, Linux 或 OS X 都能实现。英特尔并没有把 openSUSE 加入经他们测试过的 Linux 配置列表中（SUSE Enterprise 在表中），但我在运行中并没有遇到任何问题。
+
+　　这就是我怎么做的：
+
+下载 Anaconda 命令行安装程序，地址为 https://www.continuum.io/downloads 。
+
+安装： % bash Anaconda2-4.3.0-Linux-x86_64.sh
+
+安装英特尔加速器，作为一个单独的、可开启关闭的“环境”：% conda config --add channels intel % conda create --name intelpy intelpython2_full python=2
+
+运行示例程序，看到在我的 openSUSE VBox 设置上有 15 到 20 倍的速度提升。
+
+% source deactivate intelpy
+% python < myprog.py
+np.sin
+102400 10000 36.1987440586
+np.cos
+102400 10000 36.1938228607
+np.tan
+102400 10000 51.487637043
+% source activate intelpy
+% python < myprog.py
+np.sin
+102400 10000 1.76131296158
+np.cos
+102400 10000 1.83870100975
+np.tan
+102400 10000 3.38778400421
+That’s all!  The speed-ups are 20.6X, 19.7X, and 15.2X in this quick test running on a virtual machine.
+Here’s my little Python program:
+% cat myprog.py
+import numpy as np
+import time
+N = 102400
+x = np.linspace (0.0123, 4567.89, N)
+def mine (x,Z,func,name):
+  print name;
+  start = time.time ()
+  for z in range ( 0, Z ) :
+    y = func (x);
+  end = time.time ()
+  print N, Z, end - start
+  return
+mine (x,10000,np.sin,'np.sin')
+mine (x,10000,np.cos,'np.cos')
+mine (x,10000,np.tan,'np.tan')
+　　我花很短时间搞起来这个程序，用来验证英特尔对加速 NumPy 中  transcendental expression 的承诺。 Cosine, sine 和 tangent 是我还能记得的、搞 TI calculator 时候用的  transcendental，所以我用它们来试。我决定对每一个进行十亿级测试——运行超过十万个数字的函数，重复超过一万次。
+
+　　虽然未必是一个很有意思的程序，但对于加速而言是个不错的测试。
+
+　　随时加速 Python
+
+　　我此前写过一篇文章，讨论“Python 加速”（ “accelerated Python” ）使其更适用于大数据和 HPC 应用。 在速度更快之外，我还展示了，使用 Conda 来开启/关闭加速是多么得容易。这非常赞，让安装它的决定变得更加安全、没有顾虑——因为该功能是一个可选项。（对新手的提醒： Anaconda 是针对 Python 算法包的集合，Conda 则是 package manager，即算法包管理器。我两个都用并且都很喜欢。）
+
+　　我使用 “conda create”来创造被我称之为 intelpy 的环境。然后，我能够使用 “source activate intelpy”、“source deactivate intelpy”来激活、关闭它。
+
+　　Intel Distribution for Python 带来的大幅加速能力，让 “accelerated Python” 变得更实用更让人信服。
+
+　　值得注意的是， “accelerated Python” 只是使用更快的  Python 算法库，不需要对代码做任何改动。当然，我们的 Python 代码必须使用了某些加速的东西，才能从中获益。
+
+　　据雷锋网得知，英特尔通过三大方面实现 Python 加速：
+
+利用多核；
+
+利用矢量指令（SIMD），比如 SSE, AVX, AVX2 和 AVX-512；
+
+使用英特尔 Math Kernel Library (Intel MKL) 的更先进算法。
+
+　　对于运行于矢量或矩阵上的程序，上述这些都会生效。对于偶尔的单独 cosine，我们不应该期待大幅速度提升。同样的，对于单核 CPU，我们也不应该有性能提升的幻想。当然，英特尔 72 核协处理器 Xeon Phi 会在大量多核应用的跑分中领先。在我的例子中，我的虚拟机只利用 iMac i5 的四个核心。
+
+　　FFT 在 4 核虚拟机上有八倍性能提升
+
+　　我也试了下  Fast Fourier Transforms (FFT)。使用与原始程序相同的设置，我只是按照如下方式运行 FFT 程序：
+
+% source deactivate intelpy
+% python < myfftprog.py
+fft
+5000 2.22796392441
+fft
+7000 8.74916005135
+% source activate intelpy
+% python < myfftprog.py
+fft
+5000 0.277629137039
+fft
+7000 1.11230897903
+　　速度提升为 8 和 7.9 倍。当然，还是运行于四核 iMac 上的 openSUSE 和 VBox。
+
+　　这是我的快速 FFT 程序：
+
+% cat myfftprog.py
+import numpy as np
+import numpy.random as rn
+import time
+def trythis (Z):
+  mat = rn.rand (Z,Z) + 1j * rn.randn (Z,Z)
+  print 'fft'
+  start = time.time ()
+  # 2D transform on a complex-valued matrix:
+  result = np.fft.fft2(mat)
+  end = time.time ()
+  print Z, end - start
+  return
+trythis (5000);
+trythis (7000);
+　　新 Python 加速
+
+　　我们了解到，以下是 Intel Distribution for Python 全新 Update 2 版本中，得到了新的速度提升的方面：
+
+优化 NumPy 的算术和 transcendental 表达
+
+Transcendental expressions 包含我在快速示例程序里用的 cosine, sine 和 tangen。这些优化的核心是对 NumPy 的改变，使得 primitives （在 ndarray 数据上进行运算）能选择性地使用英特尔 MKL Short Vector Math Library (SVML) 和 MKL Vector Math Library (VML) 的能力。这使得 Python 利用处理器的最新矢量能力，包括多核优化和 AVX/AVX2/AVX-512。英特尔团队表示，他们利用 Xeon Phi，实现过 NumPy 算术和 transcendental 运算在 vector-vector 和 vector-scalar 上最高 400 倍的速度提升。
+
+优化 NumPy 和 SciPy 的 FFT
+
+这些优化的核心是英特尔 MKL，一系列 NumPy、SciPy 函数都能用到它对 FFT 的原生优化。这些优化包含真实、复杂的数据类型，单精度和双精度都包含 （ single and double precision），从一维到多维的数据，in place 或者 out of place。英特尔团队见到过这项更新带来 60 倍的性能提升。这使得 Python 的性能可与原生 C/C++ 程序相媲美。
+
+优化内存管理
+
+Python 是一门动态语言，为用户管理内存。Python 应用的性能，在很大程度上取决于内存运行的性能，这包括内存分配、再分配（de-allocation）、复制和移动。英特尔提供的加速版本 Python，能在 NumPy 分配数组时保证最佳的 alignment，所以 NumPy、SciPy 的运算函数，能从相应排列的 SIMD 内存访问指令获益。英特尔表示最大的提升来自于对内存复制和移动运算的优化。
+
+更快——能用 Conda 方便地关闭/启用
+
+Anaconda 英特尔渠道的最新加速版本 Python，为 Python 程序带来显著性能优化，而无需改变代码。下载、安装也很方便。
+
+我真的特喜欢用 Conda 把它开启/关闭这一功能。这方便了性能对比，并且让我感到安心——没有这个功能的话，我会对切换到超快的数学函数感到犹豫。
+
+ 
+来自: 雷锋网

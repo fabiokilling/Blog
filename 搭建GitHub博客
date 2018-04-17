@@ -241,3 +241,8 @@ Jekyll使用Liquid模板语言，{{ page.title }}表示文章标题，{{ content
 至此，最简单的Blog就算搭建完成了。进一步的完善，请参考Jekyll创始人的示例库，以及其他用Jekyll搭建的blog。
 
 （完）
+
+
+
+注释1：http://www.ruanyifeng.com/blog/2012/08/blogging_with_jekyll.html
+注释2：https://blog.csdn.net/changtianshuiyue/article/details/35797429
